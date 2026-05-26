@@ -334,65 +334,19 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Data source ──────────────────────────────────────────────────────────
-    st.markdown('<div class="sb-sec">Data Source</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sb-sec">Pipeline</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div style="font-size:12px;color:#8A8A8A;line-height:1.9;">
+      1 · Reconciliation<br>
+      2 · RAG Investigation<br>
+      3 · Reporting
+    </div>""", unsafe_allow_html=True)
 
-    gl_file = st.file_uploader("GL Balances CSV",  type="csv", key="gl_upload", on_change=_reset_run)
-    sl_file = st.file_uploader("Subledger CSV",    type="csv", key="sl_upload", on_change=_reset_run)
-
-    st.markdown("<div style='text-align:center;color:#555;font-size:11px;margin:0.5rem 0'>— or —</div>",
-                unsafe_allow_html=True)
-
-    if st.button("Use Sample Data", use_container_width=True):
-        st.session_state.gl_path = str(ROOT / "data" / "raw" / "gl_balances.csv")
-        st.session_state.sl_path = str(ROOT / "data" / "raw" / "subledger.csv")
-        st.session_state.using_sample = True
-        _reset_run()
-        st.rerun()
-
-    # Handle file saves
-    raw_dir = ROOT / "data" / "raw"
-    raw_dir.mkdir(parents=True, exist_ok=True)
-    if gl_file is not None:
-        p = raw_dir / "uploaded_gl.csv"; p.write_bytes(gl_file.getvalue())
-        st.session_state.gl_path = str(p); st.session_state.using_sample = False; _reset_run()
-    if sl_file is not None:
-        p = raw_dir / "uploaded_sl.csv"; p.write_bytes(sl_file.getvalue())
-        st.session_state.sl_path = str(p); st.session_state.using_sample = False; _reset_run()
-
-    # Data status
-    if st.session_state.gl_path and st.session_state.sl_path:
-        src = "Sample data" if st.session_state.using_sample else "Uploaded files"
-        st.markdown(f"""
-        <div style="background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.2);
-                    border-radius:6px;padding:0.6rem 0.85rem;margin-top:0.5rem;">
-          <span style="color:#2ECC71;font-size:12px;font-weight:500;">&#10003; {escape(src)} loaded</span>
-        </div>""", unsafe_allow_html=True)
-    else:
-        missing = " + ".join(n for n, p in [("GL", st.session_state.gl_path),
-                                              ("Subledger", st.session_state.sl_path)] if not p)
-        st.markdown(f"""
-        <div style="background:rgba(138,138,138,0.06);border:1px solid #2E2E2E;
-                    border-radius:6px;padding:0.6rem 0.85rem;margin-top:0.5rem;">
-          <span style="color:#8A8A8A;font-size:12px;">Missing: {escape(missing)}</span>
-        </div>""", unsafe_allow_html=True)
-
-    # ── Settings ─────────────────────────────────────────────────────────────
     st.markdown('<div class="sb-sec">Settings</div>', unsafe_allow_html=True)
     threshold = st.number_input(
         "Variance Threshold (USD)",
         min_value=1_000, max_value=500_000, value=10_000, step=1_000,
         help="Flag exceptions above this USD amount",
-    )
-
-    # ── Run ──────────────────────────────────────────────────────────────────
-    st.markdown('<div style="margin-top:1.5rem;"></div>', unsafe_allow_html=True)
-    data_ready = bool(st.session_state.gl_path and st.session_state.sl_path)
-    run_clicked = st.button(
-        "Run Reconciliation",
-        type="primary",
-        disabled=not data_ready,
-        use_container_width=True,
     )
 
     st.divider()
@@ -402,6 +356,10 @@ with st.sidebar:
       <a href="https://github.com/Dilipchennam3005/finops-agent"
          style="color:#D97757;text-decoration:none;">github.com / finops-agent</a>
     </div>""", unsafe_allow_html=True)
+
+# ── File handling (outside sidebar so it always runs) ─────────────────────────
+raw_dir = ROOT / "data" / "raw"
+raw_dir.mkdir(parents=True, exist_ok=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN AREA — Header
@@ -418,6 +376,61 @@ st.markdown(f"""
   </div>
 </div>
 """, unsafe_allow_html=True)
+
+# ── Data loading controls (always visible in main area) ───────────────────────
+st.markdown('<div class="fo-section">Load Data</div>', unsafe_allow_html=True)
+
+col_gl, col_sl, col_sample = st.columns([2, 2, 1], gap="medium")
+with col_gl:
+    gl_file = st.file_uploader("GL Balances CSV", type="csv", key="gl_upload", on_change=_reset_run)
+with col_sl:
+    sl_file = st.file_uploader("Subledger CSV",   type="csv", key="sl_upload", on_change=_reset_run)
+with col_sample:
+    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)  # align with uploader label
+    if st.button("Use Sample Data", use_container_width=True):
+        st.session_state.gl_path = str(ROOT / "data" / "raw" / "gl_balances.csv")
+        st.session_state.sl_path = str(ROOT / "data" / "raw" / "subledger.csv")
+        st.session_state.using_sample = True
+        _reset_run()
+        st.rerun()
+    st.markdown("<div style='font-size:11px;color:#555;margin-top:4px;text-align:center'>55 synthetic accounts</div>",
+                unsafe_allow_html=True)
+
+if gl_file is not None:
+    p = raw_dir / "uploaded_gl.csv"; p.write_bytes(gl_file.getvalue())
+    st.session_state.gl_path = str(p); st.session_state.using_sample = False; _reset_run()
+if sl_file is not None:
+    p = raw_dir / "uploaded_sl.csv"; p.write_bytes(sl_file.getvalue())
+    st.session_state.sl_path = str(p); st.session_state.using_sample = False; _reset_run()
+
+# Run button row
+st.markdown('<div class="fo-section">Run Pipeline</div>', unsafe_allow_html=True)
+data_ready = bool(st.session_state.gl_path and st.session_state.sl_path)
+
+col_run, col_status = st.columns([1, 3], gap="medium")
+with col_run:
+    run_clicked = st.button(
+        "Run Reconciliation",
+        type="primary",
+        disabled=not data_ready,
+        use_container_width=True,
+    )
+with col_status:
+    if data_ready:
+        src = "Sample data (55 accounts)" if st.session_state.using_sample else "Uploaded files"
+        st.markdown(f"""
+        <div style="background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.18);
+                    border-radius:6px;padding:0.55rem 1rem;margin-top:0.2rem;">
+          <span style="color:#2ECC71;font-size:13px;font-weight:500;">&#10003; {escape(src)} ready</span>
+        </div>""", unsafe_allow_html=True)
+    else:
+        missing = " and ".join(n for n, p in
+            [("GL Balances", st.session_state.gl_path), ("Subledger", st.session_state.sl_path)] if not p)
+        st.markdown(f"""
+        <div style="background:rgba(138,138,138,0.05);border:1px solid #2E2E2E;
+                    border-radius:6px;padding:0.55rem 1rem;margin-top:0.2rem;">
+          <span style="color:#8A8A8A;font-size:13px;">Upload {escape(missing)}, or click Use Sample Data</span>
+        </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PIPELINE EXECUTION
@@ -728,14 +741,8 @@ if st.session_state.run_complete and st.session_state.results:
                 st.text(state["report"])
 
 else:
-    # ── Empty state ───────────────────────────────────────────────────────────
     if not st.session_state.run_error:
         st.markdown("""
-        <div class="empty">
-          <div class="empty-title">No reconciliation run yet</div>
-          <div class="empty-sub">
-            Load your GL Balances and Subledger CSVs using the sidebar,<br>
-            or click <strong style="color:#D97757;">Use Sample Data</strong> to demo with 55 synthetic accounts.<br>
-            Then click <strong style="color:#D97757;">Run Reconciliation</strong> to start the pipeline.
-          </div>
+        <div style="text-align:center;padding:3rem 2rem;color:#555;font-size:13px;">
+          Results will appear here after you run the pipeline.
         </div>""", unsafe_allow_html=True)
