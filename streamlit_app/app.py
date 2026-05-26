@@ -22,250 +22,40 @@ st.set_page_config(
     page_title="FinOps Agent",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
-# ══════════════════════════════════════════════════════════════════════════════
-# GLOBAL CSS
-# ══════════════════════════════════════════════════════════════════════════════
+# Minimal CSS — just hide chrome and style the two custom elements
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-*, *::before, *::after { box-sizing: border-box; }
-
-html, body, .stApp, [data-testid="stApp"] {
-    background-color: #0A0A0A !important;
-    font-family: Inter, system-ui, -apple-system, sans-serif !important;
-    color: #ECECEC !important;
+#MainMenu, footer, header { visibility: hidden; }
+.badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
 }
-#MainMenu, footer { visibility: hidden !important; }
-header[data-testid="stHeader"] { display: none !important; }
-
-.block-container {
-    padding: 2rem 2.5rem 4rem 2.5rem !important;
-    max-width: 100% !important;
-}
-
-p, span, li, td, th, div, label {
-    font-family: Inter, system-ui, sans-serif !important;
-}
-h1, h2, h3, h4 {
-    font-family: Inter, system-ui, sans-serif !important;
-    color: #ECECEC !important;
-}
-
-/* ── Sidebar ───────────────────────────────── */
-section[data-testid="stSidebar"] {
-    background-color: #0A0A0A !important;
-    border-right: 1px solid #2E2E2E !important;
-}
-section[data-testid="stSidebar"] > div:first-child {
-    background-color: #0A0A0A !important;
-    padding-top: 1.25rem !important;
-}
-section[data-testid="stSidebar"] * { color: #ECECEC !important; }
-section[data-testid="stSidebar"] hr { border-color: #2E2E2E !important; }
-
-/* ── Buttons ──────────────────────────────── */
-.stButton > button {
-    background-color: #D97757 !important;
-    color: #FFFFFF !important;
-    border: none !important;
-    border-radius: 6px !important;
-    font-weight: 500 !important;
-    font-size: 14px !important;
-    transition: background-color 0.15s !important;
-}
-.stButton > button:hover  { background-color: #C06444 !important; }
-.stButton > button:disabled {
-    background-color: #1A1A1A !important;
-    color: #555 !important;
-    border: 1px solid #2E2E2E !important;
-}
-
-/* ── Number input ─────────────────────────── */
-.stNumberInput input {
-    background-color: #1A1A1A !important;
-    border: 1px solid #2E2E2E !important;
-    color: #ECECEC !important;
-    border-radius: 6px !important;
-}
-.stNumberInput input:focus {
-    border-color: #D97757 !important;
-    box-shadow: 0 0 0 1px rgba(217,119,87,0.4) !important;
-}
-.stNumberInput label {
-    color: #8A8A8A !important;
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.06em !important;
-}
-
-/* ── File uploader ────────────────────────── */
-[data-testid="stFileUploader"] {
-    background-color: #1A1A1A !important;
-    border-radius: 8px !important;
-}
-[data-testid="stFileUploader"] label {
-    color: #8A8A8A !important;
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.06em !important;
-}
-[data-testid="stFileUploaderDropzone"] {
-    background-color: #111 !important;
-    border: 1px dashed #2E2E2E !important;
-    border-radius: 6px !important;
-}
-[data-testid="stFileUploaderDropzone"]:hover {
-    border-color: #D97757 !important;
-    background-color: rgba(217,119,87,0.03) !important;
-}
-[data-testid="stFileUploaderDropzone"] p,
-[data-testid="stFileUploaderDropzone"] span { color: #555 !important; }
-
-/* ── Alerts ───────────────────────────────── */
-[data-testid="stAlert"] {
-    background-color: #1A1A1A !important;
-    border: 1px solid #2E2E2E !important;
-    border-radius: 8px !important;
-}
-
-/* ── Expander ─────────────────────────────── */
-[data-testid="stExpander"] {
-    background-color: #1A1A1A !important;
-    border: 1px solid #2E2E2E !important;
-    border-radius: 8px !important;
-}
-[data-testid="stExpander"] summary { color: #ECECEC !important; }
-details > summary { color: #ECECEC !important; }
-
-/* ── Dividers ─────────────────────────────── */
-hr { border-color: #2E2E2E !important; margin: 1.25rem 0 !important; }
-
-/* ── Download button ──────────────────────── */
-[data-testid="stDownloadButton"] > button {
-    background-color: #D97757 !important;
-    color: white !important;
-}
-
-/* ── Plotly chart card ────────────────────── */
-[data-testid="stPlotlyChart"] {
-    background-color: #1A1A1A !important;
-    border: 1px solid #2E2E2E !important;
-    border-radius: 10px !important;
-    padding: 0.25rem !important;
-}
-
-/* ── Status widget ────────────────────────── */
-[data-testid="stStatusWidget"] { background-color: #1A1A1A !important; border: 1px solid #2E2E2E !important; border-radius: 8px !important; }
-.stStatus { background-color: #1A1A1A !important; }
-
-/* ══ Component styles ══════════════════════════════════════════════════════ */
-
-.fo-header {
-    display: flex; align-items: center; gap: 16px;
-    padding: 0 0 2rem 0; border-bottom: 1px solid #2E2E2E; margin-bottom: 2.5rem;
-}
-.fo-app-name  { font-size: 28px; font-weight: 700; color: #ECECEC; letter-spacing: -0.02em; margin: 0; line-height: 1.1; }
-.fo-subtitle  { font-size: 13px; color: #8A8A8A; margin: 4px 0 0 0; }
-.fo-vbadge    {
-    background: rgba(217,119,87,0.12); color: #D97757;
-    border: 1px solid rgba(217,119,87,0.28); border-radius: 20px;
-    padding: 2px 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
-    display: inline-block; margin-left: 6px; vertical-align: middle;
-}
-
-.fo-section   {
-    font-size: 10px; font-weight: 700; color: #D97757;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    padding-bottom: 0.6rem; border-bottom: 1px solid #2E2E2E;
-    margin: 2rem 0 1.25rem 0;
-}
-
-/* Metric grid */
-.fo-metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 2.5rem; }
-.fo-card {
-    background: #1A1A1A; border: 1px solid #2E2E2E; border-radius: 10px;
-    padding: 1.25rem 1.5rem; position: relative; overflow: hidden;
-}
-.fo-card::before { content:''; position:absolute; inset:0 auto 0 0; width:3px; border-radius:10px 0 0 10px; }
-.fo-card.orange::before { background:#D97757; }
-.fo-card.green::before  { background:#2ECC71; }
-.fo-card.yellow::before { background:#F39C12; }
-.fo-card.red::before    { background:#E74C3C; }
-.fo-val   { font-size: 36px; font-weight: 700; color: #ECECEC; letter-spacing: -0.03em; line-height: 1; margin-bottom: 6px; }
-.fo-lbl   { font-size: 11px; color: #8A8A8A; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-.fo-sub   { font-size: 11px; color: #555; margin-top: 5px; }
-
-/* Exception table */
-.fo-tbl-wrap { background:#1A1A1A; border:1px solid #2E2E2E; border-radius:10px; overflow:auto; margin-bottom:2rem; }
-.fo-tbl { width:100%; border-collapse:collapse; font-size:13px; }
-.fo-tbl thead tr { background:#111; border-bottom:1px solid #2E2E2E; }
-.fo-tbl thead th {
-    padding:11px 14px; text-align:left;
-    font-size:10px; font-weight:700; color:#D97757;
-    text-transform:uppercase; letter-spacing:0.07em; white-space:nowrap;
-}
-.fo-tbl tbody tr { border-bottom:1px solid rgba(255,255,255,0.04); }
-.fo-tbl tbody tr:nth-child(even) { background:rgba(255,255,255,0.018); }
-.fo-tbl tbody tr:hover { background:rgba(217,119,87,0.045); }
-.fo-tbl tbody tr:last-child { border-bottom:none; }
-.fo-tbl td { padding:12px 14px; color:#ECECEC; vertical-align:top; }
-.fo-tbl td.dim  { color:#8A8A8A; font-size:12px; }
-.fo-tbl td.mono { font-family:'Fira Code','Courier New',monospace; font-size:12px; }
-.fo-tbl td.wrap { white-space:normal; min-width:200px; max-width:340px; line-height:1.55; font-size:12px; }
-.fo-tbl td.num  { font-family:'Fira Code','Courier New',monospace; white-space:nowrap; }
-
-/* Badges */
-.badge { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; letter-spacing:0.03em; white-space:nowrap; }
-.b-green  { background:rgba(46,204,113,0.12);  color:#2ECC71; border:1px solid rgba(46,204,113,0.25); }
-.b-yellow { background:rgba(243,156,18,0.12);  color:#F39C12; border:1px solid rgba(243,156,18,0.25); }
-.b-red    { background:rgba(231,76,60,0.12);   color:#E74C3C; border:1px solid rgba(231,76,60,0.25); }
-.b-orange { background:rgba(217,119,87,0.12);  color:#D97757; border:1px solid rgba(217,119,87,0.25); }
-.b-gray   { background:rgba(138,138,138,0.08); color:#8A8A8A; border:1px solid rgba(138,138,138,0.18); }
-.b-blue   { background:rgba(52,152,219,0.12);  color:#3498DB; border:1px solid rgba(52,152,219,0.25); }
-
-/* Review cards */
+.b-green  { background: rgba(46,204,113,0.15);  color: #2ECC71; }
+.b-yellow { background: rgba(243,156,18,0.15);   color: #F39C12; }
+.b-red    { background: rgba(231,76,60,0.15);    color: #E74C3C; }
+.b-orange { background: rgba(217,119,87,0.15);   color: #D97757; }
+.b-blue   { background: rgba(52,152,219,0.15);   color: #3498DB; }
+.b-gray   { background: rgba(138,138,138,0.1);   color: #8A8A8A; }
 .rv-card {
-    background:#1A1A1A; border:1px solid #2E2E2E; border-left:3px solid #D97757;
-    border-radius:10px; padding:1.25rem 1.5rem; margin-bottom:1rem;
+    border-left: 3px solid #D97757;
+    background: #1A1A1A;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
 }
-.rv-hdr  { display:flex; align-items:center; gap:10px; margin-bottom:0.85rem; flex-wrap:wrap; }
-.rv-acct { font-size:15px; font-weight:600; color:#ECECEC; font-family:'Fira Code','Courier New',monospace; }
-.rv-meta { font-size:12px; color:#8A8A8A; }
-.rv-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
-.rv-lbl  { font-size:10px; font-weight:700; color:#8A8A8A; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:5px; }
-.rv-val  { font-size:13px; color:#ECECEC; line-height:1.55; }
-.rv-cases { margin-top:0.85rem; font-size:12px; color:#8A8A8A; }
-.rv-cases .ct { color:#D97757; font-family:monospace; font-size:11px; background:rgba(217,119,87,0.08); padding:1px 6px; border-radius:3px; margin-right:4px; }
-
-/* Sidebar logo */
-.sb-logo { display:flex; align-items:center; gap:10px; padding:0 0 1.5rem 0; border-bottom:1px solid #2E2E2E; margin-bottom:0.25rem; }
-.sb-name { font-size:15px; font-weight:700; color:#ECECEC; }
-.sb-ver  { font-size:10px; color:#8A8A8A; }
-.sb-sec  { font-size:10px; font-weight:700; color:#D97757; text-transform:uppercase; letter-spacing:0.1em; margin:1.5rem 0 0.75rem 0; }
-
-/* Empty state */
-.empty { text-align:center; padding:5rem 2rem; }
-.empty-title { font-size:18px; font-weight:600; color:#ECECEC; margin-bottom:0.5rem; }
-.empty-sub   { font-size:14px; color:#8A8A8A; line-height:1.6; }
-
-/* Success bar */
-.success-bar {
-    background:rgba(46,204,113,0.08); border:1px solid rgba(46,204,113,0.2);
-    border-left:3px solid #2ECC71; border-radius:8px; padding:0.85rem 1.25rem;
-    color:#2ECC71; font-size:13px; font-weight:500;
-}
+.rv-label { font-size: 11px; font-weight: 600; color: #8A8A8A; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+.rv-value { font-size: 13px; color: #ECECEC; line-height: 1.5; }
 </style>
 """, unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# HELPERS
-# ══════════════════════════════════════════════════════════════════════════════
+# ── Helpers ───────────────────────────────────────────────────────────────────
 VECTOR_STORE_PATH = str(ROOT / "data" / "vector_store")
 KB_COLLECTION     = "finops_exceptions"
 
@@ -294,9 +84,10 @@ def _reset_run():
 
 
 def _conf_badge(c: float) -> str:
-    if c >= 0.8:  return f'<span class="badge b-green">{c:.0%}</span>'
-    if c >= 0.65: return f'<span class="badge b-yellow">{c:.0%}</span>'
-    return            f'<span class="badge b-red">{c:.0%}</span>'
+    if c >= 0.8:  cls = "b-green"
+    elif c >= 0.65: cls = "b-yellow"
+    else: cls = "b-red"
+    return f'<span class="badge {cls}">{c:.0%}</span>'
 
 
 def _type_badge(t: str) -> str:
@@ -305,109 +96,72 @@ def _type_badge(t: str) -> str:
     return f'<span class="badge {cls}">{escape(t)}</span>'
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# SESSION STATE
-# ══════════════════════════════════════════════════════════════════════════════
+# ── Session state ─────────────────────────────────────────────────────────────
 for k, v in {"gl_path": None, "sl_path": None, "using_sample": False,
               "run_complete": False, "run_error": None, "results": None}.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ══════════════════════════════════════════════════════════════════════════════
-# SIDEBAR
-# ══════════════════════════════════════════════════════════════════════════════
-_LOGO_SVG = """
-<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
-  <polygon points="18,2 33,10 33,26 18,34 3,26 3,10" fill="#D97757"/>
-  <text x="18" y="22" font-family="Inter,system-ui,sans-serif" font-size="11"
-        font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle">FO</text>
-</svg>"""
-
+# ── Sidebar — settings only ───────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown(f"""
-    <div class="sb-logo">
-      {_LOGO_SVG}
-      <div>
-        <div class="sb-name">FinOps Agent</div>
-        <div class="sb-ver">v0.5 · AI reconciliation</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown('<div class="sb-sec">Pipeline</div>', unsafe_allow_html=True)
-    st.markdown("""
-    <div style="font-size:12px;color:#8A8A8A;line-height:1.9;">
-      1 · Reconciliation<br>
-      2 · RAG Investigation<br>
-      3 · Reporting
-    </div>""", unsafe_allow_html=True)
-
-    st.markdown('<div class="sb-sec">Settings</div>', unsafe_allow_html=True)
+    st.markdown("### Settings")
     threshold = st.number_input(
-        "Variance Threshold (USD)",
+        "Variance threshold (USD)",
         min_value=1_000, max_value=500_000, value=10_000, step=1_000,
-        help="Flag exceptions above this USD amount",
+        help="Flag exceptions above this amount",
     )
-
     st.divider()
-    st.markdown("""
-    <div style="font-size:10px;color:#555;line-height:1.8;">
-      LangGraph · ChromaDB · Claude API<br>
-      <a href="https://github.com/Dilipchennam3005/finops-agent"
-         style="color:#D97757;text-decoration:none;">github.com / finops-agent</a>
-    </div>""", unsafe_allow_html=True)
+    st.caption("LangGraph · ChromaDB · Claude")
 
-# ── File handling (outside sidebar so it always runs) ─────────────────────────
+# ── Header ────────────────────────────────────────────────────────────────────
+st.title("FinOps Agent")
+st.caption("Financial Reconciliation Intelligence  ·  v0.5")
+st.divider()
+
+# ── Load Data ─────────────────────────────────────────────────────────────────
+st.subheader("Load Data")
+
 raw_dir = ROOT / "data" / "raw"
 raw_dir.mkdir(parents=True, exist_ok=True)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# MAIN AREA — Header
-# ══════════════════════════════════════════════════════════════════════════════
-st.markdown(f"""
-<div class="fo-header">
-  {_LOGO_SVG.replace('width="36" height="36"', 'width="44" height="44"')}
-  <div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <span class="fo-app-name">FinOps Agent</span>
-      <span class="fo-vbadge">v0.5</span>
-    </div>
-    <p class="fo-subtitle">Financial Reconciliation Intelligence</p>
-  </div>
-</div>
-""", unsafe_allow_html=True)
+col_gl, col_sl, col_btn = st.columns([5, 5, 3], gap="large")
 
-# ── Data loading controls (always visible in main area) ───────────────────────
-st.markdown('<div class="fo-section">Load Data</div>', unsafe_allow_html=True)
-
-col_gl, col_sl, col_sample = st.columns([2, 2, 1], gap="medium")
 with col_gl:
     gl_file = st.file_uploader("GL Balances CSV", type="csv", key="gl_upload", on_change=_reset_run)
+
 with col_sl:
-    sl_file = st.file_uploader("Subledger CSV",   type="csv", key="sl_upload", on_change=_reset_run)
-with col_sample:
-    st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)  # align with uploader label
+    sl_file = st.file_uploader("Subledger CSV", type="csv", key="sl_upload", on_change=_reset_run)
+
+with col_btn:
+    st.write("")
+    st.write("")
     if st.button("Use Sample Data", use_container_width=True):
-        st.session_state.gl_path = str(ROOT / "data" / "raw" / "gl_balances.csv")
-        st.session_state.sl_path = str(ROOT / "data" / "raw" / "subledger.csv")
+        st.session_state.gl_path      = str(ROOT / "data" / "raw" / "gl_balances.csv")
+        st.session_state.sl_path      = str(ROOT / "data" / "raw" / "subledger.csv")
         st.session_state.using_sample = True
         _reset_run()
         st.rerun()
-    st.markdown("<div style='font-size:11px;color:#555;margin-top:4px;text-align:center'>55 synthetic accounts</div>",
-                unsafe_allow_html=True)
+    st.caption("55 synthetic accounts, 10 intentional mismatches")
 
-if gl_file is not None:
-    p = raw_dir / "uploaded_gl.csv"; p.write_bytes(gl_file.getvalue())
-    st.session_state.gl_path = str(p); st.session_state.using_sample = False; _reset_run()
-if sl_file is not None:
-    p = raw_dir / "uploaded_sl.csv"; p.write_bytes(sl_file.getvalue())
-    st.session_state.sl_path = str(p); st.session_state.using_sample = False; _reset_run()
+if gl_file:
+    p = raw_dir / "uploaded_gl.csv"
+    p.write_bytes(gl_file.getvalue())
+    st.session_state.gl_path = str(p)
+    st.session_state.using_sample = False
+    _reset_run()
 
-# Run button row
-st.markdown('<div class="fo-section">Run Pipeline</div>', unsafe_allow_html=True)
+if sl_file:
+    p = raw_dir / "uploaded_sl.csv"
+    p.write_bytes(sl_file.getvalue())
+    st.session_state.sl_path = str(p)
+    st.session_state.using_sample = False
+    _reset_run()
+
+# ── Run ───────────────────────────────────────────────────────────────────────
+st.divider()
 data_ready = bool(st.session_state.gl_path and st.session_state.sl_path)
 
-col_run, col_status = st.columns([1, 3], gap="medium")
+col_run, col_status = st.columns([2, 5])
 with col_run:
     run_clicked = st.button(
         "Run Reconciliation",
@@ -417,24 +171,16 @@ with col_run:
     )
 with col_status:
     if data_ready:
-        src = "Sample data (55 accounts)" if st.session_state.using_sample else "Uploaded files"
-        st.markdown(f"""
-        <div style="background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.18);
-                    border-radius:6px;padding:0.55rem 1rem;margin-top:0.2rem;">
-          <span style="color:#2ECC71;font-size:13px;font-weight:500;">&#10003; {escape(src)} ready</span>
-        </div>""", unsafe_allow_html=True)
+        src = "Sample data" if st.session_state.using_sample else "Uploaded files"
+        st.success(f"{src} loaded — ready to run", icon="✓")
     else:
-        missing = " and ".join(n for n, p in
-            [("GL Balances", st.session_state.gl_path), ("Subledger", st.session_state.sl_path)] if not p)
-        st.markdown(f"""
-        <div style="background:rgba(138,138,138,0.05);border:1px solid #2E2E2E;
-                    border-radius:6px;padding:0.55rem 1rem;margin-top:0.2rem;">
-          <span style="color:#8A8A8A;font-size:13px;">Upload {escape(missing)}, or click Use Sample Data</span>
-        </div>""", unsafe_allow_html=True)
+        missing = " and ".join(
+            n for n, p in [("GL Balances", st.session_state.gl_path),
+                           ("Subledger", st.session_state.sl_path)] if not p
+        )
+        st.info(f"Upload {missing}, or use sample data")
 
-# ══════════════════════════════════════════════════════════════════════════════
-# PIPELINE EXECUTION
-# ══════════════════════════════════════════════════════════════════════════════
+# ── Pipeline execution ────────────────────────────────────────────────────────
 if run_clicked and data_ready:
     _reset_run()
 
@@ -446,21 +192,19 @@ if run_clicked and data_ready:
         "raw_data": {}, "exceptions": [], "investigations": [],
         "report": "", "confidence": 0.0, "human_review": False,
     }
-    pipeline_ok = True
+    ok = True
 
     with st.status("Running pipeline...", expanded=True) as status:
 
-        # KB check
         if _kb_count() == 0:
-            status.write("**Building knowledge base** — first-run setup (32 historical records)...")
+            status.write("Building knowledge base (first-run setup)...")
             try:
                 _build_kb()
                 status.write(f"  Knowledge base ready — {_kb_count()} records")
             except Exception as exc:
                 status.write(f"  KB build failed: {type(exc).__name__}: {exc}")
 
-        # Agent 1
-        status.write("**Agent 1 · Reconciliation** — matching GL vs Subledger...")
+        status.write("Agent 1 · Reconciliation — matching GL vs Subledger...")
         try:
             recon = run_matching_engine(
                 gl_path=st.session_state.gl_path,
@@ -469,32 +213,27 @@ if run_clicked and data_ready:
                 threshold=float(threshold),
             )
             state["exceptions"] = recon["exceptions"]
-            state["raw_data"]   = {
+            state["raw_data"] = {
                 "total_accounts" : recon["total_accounts"],
                 "matched_count"  : recon["matched_count"],
                 "exception_count": recon["exception_count"],
                 "threshold_usd"  : recon["threshold_usd"],
             }
             status.write(
-                f"  Matched **{recon['matched_count']}/{recon['total_accounts']}** accounts — "
-                f"**{recon['exception_count']}** exceptions above ${recon['threshold_usd']:,.0f}"
+                f"  {recon['matched_count']}/{recon['total_accounts']} matched — "
+                f"{recon['exception_count']} exceptions above ${recon['threshold_usd']:,.0f}"
             )
         except Exception as exc:
             st.session_state.run_error = f"{type(exc).__name__}: {exc}"
             status.update(label="Reconciliation failed", state="error")
-            pipeline_ok = False
+            ok = False
 
-        # Agent 2
-        if pipeline_ok:
-            status.write(
-                f"**Agent 2 · Investigation** — analysing {len(state['exceptions'])} "
-                "exceptions with RAG + Claude..."
-            )
+        if ok:
+            status.write(f"Agent 2 · Investigation — analysing {len(state['exceptions'])} exceptions...")
             try:
                 state = investigation_agent(state)
                 status.write(
-                    f"  Investigated **{len(state['investigations'])}** exceptions — "
-                    f"avg confidence **{state['confidence']:.0%}**"
+                    f"  Done — avg confidence {state['confidence']:.0%}"
                 )
             except Exception as exc:
                 err = f"{type(exc).__name__}: {exc}"
@@ -502,31 +241,27 @@ if run_clicked and data_ready:
                 state["investigations"] = [
                     {"account": ex["account"], "exception_type": ex["type"],
                      "variance": ex["variance"], "currency": ex["currency"],
-                     "root_cause": f"Investigation unavailable: {err}",
+                     "root_cause": f"Unavailable: {err}",
                      "recommended_action": "Manual review required",
                      "confidence": 0.5, "exception_category": "OTHER", "similar_cases": []}
                     for ex in state["exceptions"]
                 ]
                 state["confidence"] = 0.5
 
-        # Agent 3
-        if pipeline_ok:
-            status.write("**Agent 3 · Reporting** — generating report...")
+        if ok:
+            status.write("Agent 3 · Reporting...")
             state = human_review_node(state) if state["confidence"] < 0.8 else reporting_agent(state)
-            status.write("  Report generated")
             status.update(label="Pipeline complete", state="complete")
 
-    if pipeline_ok:
+    if ok:
         st.session_state.results      = state
         st.session_state.run_complete = True
         st.rerun()
 
 if st.session_state.run_error:
-    st.error(f"Pipeline error: {st.session_state.run_error}")
+    st.error(st.session_state.run_error)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# RESULTS
-# ══════════════════════════════════════════════════════════════════════════════
+# ── Results ───────────────────────────────────────────────────────────────────
 if st.session_state.run_complete and st.session_state.results:
     state = st.session_state.results
     raw   = state["raw_data"]
@@ -534,215 +269,166 @@ if st.session_state.run_complete and st.session_state.results:
     excs  = state["exceptions"]
     conf  = state["confidence"]
 
-    # ── Metric cards ──────────────────────────────────────────────────────────
+    st.divider()
+    st.subheader("Results")
+
+    # Summary metrics
     total = raw.get("total_accounts", 0)
     clean = raw.get("matched_count", 0)
     exc_n = raw.get("exception_count", 0)
     thr   = raw.get("threshold_usd", 0)
-    pct   = f"{clean/total*100:.0f}% of total" if total else ""
-    conf_card_cls = "green" if conf >= 0.8 else "red"
-    conf_delta    = "auto-approved" if conf >= 0.8 else "needs review"
-    conf_delta_col= "#2ECC71" if conf >= 0.8 else "#E74C3C"
 
-    st.markdown(f"""
-    <div class="fo-metrics">
-      <div class="fo-card orange">
-        <div class="fo-val">{total}</div>
-        <div class="fo-lbl">Total Accounts</div>
-      </div>
-      <div class="fo-card green">
-        <div class="fo-val">{clean}</div>
-        <div class="fo-lbl">Clean Reconciliations</div>
-        <div class="fo-sub">{pct}</div>
-      </div>
-      <div class="fo-card yellow">
-        <div class="fo-val">{exc_n}</div>
-        <div class="fo-lbl">Exceptions Found</div>
-        <div class="fo-sub">&gt;${thr:,.0f} USD threshold</div>
-      </div>
-      <div class="fo-card {conf_card_cls}">
-        <div class="fo-val">{conf:.0%}</div>
-        <div class="fo-lbl">Avg Confidence</div>
-        <div class="fo-sub" style="color:{conf_delta_col};">{conf_delta}</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Total Accounts",        total)
+    c2.metric("Clean Reconciliations", clean,  delta=f"{clean/total*100:.0f}% of total" if total else None, delta_color="off")
+    c3.metric("Exceptions Found",      exc_n,  delta=f">${thr:,.0f} threshold", delta_color="off")
+    c4.metric("Avg AI Confidence",     f"{conf:.0%}",
+              delta="auto-approved" if conf >= 0.8 else "needs review",
+              delta_color="normal" if conf >= 0.8 else "inverse")
 
-    # ── Exceptions table ──────────────────────────────────────────────────────
-    st.markdown('<div class="fo-section">Exception Details</div>', unsafe_allow_html=True)
+    st.divider()
 
-    if invs:
-        has_similar = any(
-            isinstance(inv.get("similar_cases"), list) and inv["similar_cases"] for inv in invs
-        )
-        sim_th = "<th>Similar Cases</th>" if has_similar else ""
+    # Exception details — collapsible table
+    with st.expander("Exception Details", expanded=True):
+        if invs:
+            df = pd.DataFrame(invs)
+            has_similar = any(
+                isinstance(inv.get("similar_cases"), list) and inv["similar_cases"]
+                for inv in invs
+            )
 
-        rows = ""
-        for inv in invs:
-            sim_td = ""
-            if has_similar:
-                cases = inv.get("similar_cases") or []
-                sim_td = f'<td class="dim mono">{escape(", ".join(cases))}</td>'
+            # Build rows HTML for the badges, keep rest as dataframe
+            rows_html = ""
+            for inv in invs:
+                sim = ", ".join(inv.get("similar_cases") or []) or "—"
+                rows_html += f"""<tr>
+                  <td style="padding:10px 12px;color:#ECECEC;font-family:monospace;font-size:13px;">{escape(str(inv['account']))}</td>
+                  <td style="padding:10px 12px;">{_type_badge(inv['exception_type'])}</td>
+                  <td style="padding:10px 12px;color:#ECECEC;font-family:monospace;">${float(inv['variance']):,.0f}</td>
+                  <td style="padding:10px 12px;color:#8A8A8A;font-size:12px;">{escape(inv['currency'])}</td>
+                  <td style="padding:10px 12px;color:#ECECEC;font-size:12px;max-width:280px;line-height:1.5;">{escape(str(inv['root_cause']))}</td>
+                  <td style="padding:10px 12px;color:#ECECEC;font-size:12px;max-width:240px;line-height:1.5;">{escape(str(inv['recommended_action']))}</td>
+                  <td style="padding:10px 12px;">{_conf_badge(float(inv['confidence']))}</td>
+                  {"<td style='padding:10px 12px;color:#8A8A8A;font-size:11px;font-family:monospace;'>" + escape(sim) + "</td>" if has_similar else ""}
+                </tr>"""
 
-            rows += f"""
-            <tr>
-              <td class="mono">{escape(str(inv["account"]))}</td>
-              <td>{_type_badge(inv["exception_type"])}</td>
-              <td class="dim">{escape(str(inv["currency"]))}</td>
-              <td class="num">${float(inv["variance"]):,.0f}</td>
-              <td>{escape(str(inv.get("exception_category","—")))}</td>
-              <td class="wrap">{escape(str(inv["root_cause"]))}</td>
-              <td class="wrap">{escape(str(inv["recommended_action"]))}</td>
-              <td>{_conf_badge(float(inv["confidence"]))}</td>
-              {sim_td}
-            </tr>"""
-
-        st.markdown(f"""
-        <div class="fo-tbl-wrap">
-          <table class="fo-tbl">
-            <thead><tr>
-              <th>Account</th><th>Exception Type</th><th>Currency</th>
-              <th>Variance (USD)</th><th>AI Category</th>
-              <th>Root Cause</th><th>Recommended Action</th>
-              <th>Confidence</th>{sim_th}
-            </tr></thead>
-            <tbody>{rows}</tbody>
-          </table>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # ── Charts ────────────────────────────────────────────────────────────────
-    st.markdown('<div class="fo-section">Exception Analytics</div>', unsafe_allow_html=True)
-
-    if excs:
-        type_df = (
-            pd.DataFrame(excs).groupby("type").size()
-            .reset_index(name="Count").rename(columns={"type": "Exception Type"})
-        )
-
-        # Bar chart — dark theme, orange bars
-        fig_bar = px.bar(
-            type_df, x="Exception Type", y="Count", text="Count",
-            color_discrete_sequence=["#D97757"],
-            title="Exceptions by Type",
-        )
-        fig_bar.update_layout(
-            paper_bgcolor="#1A1A1A", plot_bgcolor="#1A1A1A",
-            font=dict(family="Inter, system-ui", color="#ECECEC", size=12),
-            title_font=dict(size=14, color="#ECECEC"),
-            xaxis=dict(gridcolor="#2E2E2E", tickcolor="#8A8A8A",
-                       tickfont=dict(color="#8A8A8A"), showgrid=False),
-            yaxis=dict(gridcolor="#2E2E2E", tickcolor="#8A8A8A",
-                       tickfont=dict(color="#8A8A8A"), gridwidth=1),
-            showlegend=False,
-            margin=dict(t=50, b=20, l=10, r=10),
-        )
-        fig_bar.update_traces(
-            marker_color="#D97757", marker_line_color="#C06444",
-            marker_line_width=1, textfont_color="#ECECEC", textposition="outside",
-        )
-
-        # Donut chart — clean vs exceptions
-        fig_donut = go.Figure(data=[go.Pie(
-            labels=["Clean", "Exceptions"],
-            values=[clean, exc_n],
-            hole=0.68,
-            marker=dict(colors=["#2ECC71", "#D97757"],
-                        line=dict(color="#1A1A1A", width=3)),
-            textinfo="percent",
-            textfont=dict(color="#ECECEC", size=12),
-            hovertemplate="%{label}: %{value} (%{percent})<extra></extra>",
-        )])
-        fig_donut.update_layout(
-            paper_bgcolor="#1A1A1A", plot_bgcolor="#1A1A1A",
-            font=dict(family="Inter, system-ui", color="#ECECEC"),
-            title=dict(text="Clean vs Exceptions", font=dict(size=14, color="#ECECEC")),
-            legend=dict(font=dict(color="#8A8A8A", size=12), bgcolor="rgba(0,0,0,0)"),
-            margin=dict(t=50, b=20, l=20, r=20),
-            annotations=[dict(
-                text=f"<b>{pct.split('%')[0]}%</b><br><span style='font-size:10px;color:#8A8A8A'>clean</span>",
-                x=0.5, y=0.5, showarrow=False,
-                font=dict(size=20, color="#ECECEC", family="Inter"),
-            )],
-        )
-
-        col_bar, col_donut = st.columns([3, 2], gap="large")
-        with col_bar:
-            st.plotly_chart(fig_bar,   use_container_width=True, config={"displayModeBar": False})
-        with col_donut:
-            st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
-
-    # ── Human review queue ────────────────────────────────────────────────────
-    st.markdown('<div class="fo-section">Human Review Queue</div>', unsafe_allow_html=True)
-
-    review_items = [inv for inv in invs if float(inv.get("confidence", 1.0)) < 0.8]
-
-    if not review_items:
-        st.markdown("""
-        <div class="success-bar">
-          All exceptions meet the 80% confidence threshold — no manual review required.
-        </div>""", unsafe_allow_html=True)
-    else:
-        st.markdown(f"""
-        <div style="color:#F39C12;font-size:13px;margin-bottom:1rem;font-weight:500;">
-          {len(review_items)} exception(s) flagged for manual review
-        </div>""", unsafe_allow_html=True)
-
-        for inv in review_items:
-            c = float(inv.get("confidence", 0))
-            cbadge = _conf_badge(c)
-            cases  = inv.get("similar_cases") or []
-            cases_html = ""
-            if cases:
-                tags = "".join(f'<span class="ct">{escape(x)}</span>' for x in cases)
-                cases_html = f'<div class="rv-cases">Similar cases: {tags}</div>'
+            sim_th = "<th style='padding:10px 12px;'>Similar Cases</th>" if has_similar else ""
+            th_style = "padding:10px 12px;text-align:left;font-size:11px;font-weight:600;color:#D97757;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #2E2E2E;"
 
             st.markdown(f"""
-            <div class="rv-card">
-              <div class="rv-hdr">
-                <span class="badge b-orange">NEEDS REVIEW</span>
-                <span class="rv-acct">{escape(str(inv["account"]))}</span>
-                <span class="rv-meta">
-                  {escape(str(inv["exception_type"]))} &nbsp;·&nbsp;
-                  ${float(inv["variance"]):,.0f} USD
-                </span>
-                {cbadge}
-              </div>
-              <div class="rv-grid">
-                <div>
-                  <div class="rv-lbl">Root Cause</div>
-                  <div class="rv-val">{escape(str(inv["root_cause"]))}</div>
-                </div>
-                <div>
-                  <div class="rv-lbl">Recommended Action</div>
-                  <div class="rv-val">{escape(str(inv["recommended_action"]))}</div>
-                </div>
-              </div>
-              {cases_html}
-            </div>""", unsafe_allow_html=True)
+            <div style="overflow-x:auto;border:1px solid #2E2E2E;border-radius:8px;">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead style="background:#111;">
+                <tr>
+                  <th style="{th_style}">Account</th>
+                  <th style="{th_style}">Type</th>
+                  <th style="{th_style}">Variance</th>
+                  <th style="{th_style}">Currency</th>
+                  <th style="{th_style}">Root Cause</th>
+                  <th style="{th_style}">Recommended Action</th>
+                  <th style="{th_style}">Confidence</th>
+                  {sim_th}
+                </tr>
+              </thead>
+              <tbody>{"".join(rows_html.split())}</tbody>
+            </table>
+            </div>
+            """, unsafe_allow_html=True)
 
-    # ── Export ─────────────────────────────────────────────────────────────────
-    st.markdown('<div class="fo-section">Export</div>', unsafe_allow_html=True)
-
-    col_dl, col_rpt = st.columns([1, 2])
-    with col_dl:
-        if invs:
-            st.download_button(
-                "Download Exception Report (CSV)",
-                data=pd.DataFrame(invs).to_csv(index=False).encode("utf-8"),
-                file_name="finops_exception_report.csv",
-                mime="text/csv",
-                type="primary",
-                use_container_width=True,
+    # Analytics — bar + donut
+    with st.expander("Analytics", expanded=False):
+        if excs:
+            type_df = (
+                pd.DataFrame(excs).groupby("type").size()
+                .reset_index(name="Count").rename(columns={"type": "Type"})
             )
-    with col_rpt:
-        if state.get("report"):
-            with st.expander("View full text report"):
-                st.text(state["report"])
 
-else:
-    if not st.session_state.run_error:
-        st.markdown("""
-        <div style="text-align:center;padding:3rem 2rem;color:#555;font-size:13px;">
-          Results will appear here after you run the pipeline.
-        </div>""", unsafe_allow_html=True)
+            fig_bar = px.bar(
+                type_df, x="Type", y="Count", text="Count",
+                color_discrete_sequence=["#D97757"],
+                title="Exceptions by Type",
+            )
+            fig_bar.update_layout(
+                paper_bgcolor="#1A1A1A", plot_bgcolor="#1A1A1A",
+                font=dict(color="#ECECEC", size=12),
+                title_font_size=14,
+                xaxis=dict(showgrid=False, tickfont=dict(color="#8A8A8A")),
+                yaxis=dict(gridcolor="#2E2E2E", tickfont=dict(color="#8A8A8A")),
+                showlegend=False, margin=dict(t=40, b=20, l=10, r=10),
+            )
+            fig_bar.update_traces(textposition="outside", textfont_color="#ECECEC",
+                                  marker_line_width=0)
+
+            fig_donut = go.Figure(go.Pie(
+                labels=["Clean", "Exceptions"],
+                values=[clean, exc_n],
+                hole=0.65,
+                marker=dict(colors=["#2ECC71", "#D97757"],
+                            line=dict(color="#1A1A1A", width=2)),
+                textinfo="label+percent",
+                textfont=dict(color="#ECECEC", size=12),
+                hovertemplate="%{label}: %{value}<extra></extra>",
+            ))
+            fig_donut.update_layout(
+                title="Clean vs Exceptions",
+                paper_bgcolor="#1A1A1A",
+                font=dict(color="#ECECEC"),
+                title_font_size=14,
+                showlegend=False,
+                margin=dict(t=40, b=20, l=20, r=20),
+                annotations=[dict(
+                    text=f"<b>{clean/total*100:.0f}%</b><br>clean" if total else "",
+                    x=0.5, y=0.5, showarrow=False,
+                    font=dict(size=18, color="#ECECEC"),
+                )],
+            )
+
+            col_a, col_b = st.columns([3, 2])
+            with col_a:
+                st.plotly_chart(fig_bar,   use_container_width=True, config={"displayModeBar": False})
+            with col_b:
+                st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
+
+    # Human review queue
+    review_items = [inv for inv in invs if float(inv.get("confidence", 1.0)) < 0.8]
+    review_label = f"Human Review Queue  ·  {len(review_items)} flagged" if review_items else "Human Review Queue  ·  none required"
+
+    with st.expander(review_label, expanded=bool(review_items)):
+        if not review_items:
+            st.success("All exceptions above the 80% confidence threshold.")
+        else:
+            for inv in review_items:
+                c = float(inv.get("confidence", 0))
+                cases = inv.get("similar_cases") or []
+                cases_str = "  ·  Similar: " + ", ".join(cases) if cases else ""
+                st.markdown(f"""
+                <div class="rv-card">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:0.75rem;flex-wrap:wrap;">
+                    <span class="badge b-orange">NEEDS REVIEW</span>
+                    <span style="font-weight:600;font-family:monospace;">{escape(str(inv['account']))}</span>
+                    <span style="color:#8A8A8A;font-size:12px;">{escape(inv['exception_type'])}  ·  ${float(inv['variance']):,.0f} USD  ·  {c:.0%} confidence{escape(cases_str)}</span>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                    <div>
+                      <div class="rv-label">Root Cause</div>
+                      <div class="rv-value">{escape(str(inv['root_cause']))}</div>
+                    </div>
+                    <div>
+                      <div class="rv-label">Recommended Action</div>
+                      <div class="rv-value">{escape(str(inv['recommended_action']))}</div>
+                    </div>
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+    # Export
+    st.divider()
+    col_dl, _ = st.columns([1, 3])
+    with col_dl:
+        st.download_button(
+            "Download Exception Report (CSV)",
+            data=pd.DataFrame(invs).to_csv(index=False).encode("utf-8"),
+            file_name="finops_exception_report.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
