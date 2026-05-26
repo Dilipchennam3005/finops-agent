@@ -114,8 +114,13 @@ with st.sidebar:
     st.caption("LangGraph · ChromaDB · Claude")
 
 # ── Header ────────────────────────────────────────────────────────────────────
-st.title("FinOps Agent")
-st.caption("Financial Reconciliation Intelligence  ·  v0.5")
+st.markdown(
+    "<div style='text-align:center;padding:1.25rem 0 0.25rem;'>"
+    "<h1 style='margin:0;font-size:1.9rem;font-weight:700;letter-spacing:-0.5px;'>FinOps Agent</h1>"
+    "<p style='margin:0.2rem 0 0;color:#8A8A8A;font-size:0.82rem;'>Financial Reconciliation Intelligence &nbsp;·&nbsp; v0.6</p>"
+    "</div>",
+    unsafe_allow_html=True,
+)
 st.divider()
 
 # ── Load Data ─────────────────────────────────────────────────────────────────
@@ -172,7 +177,7 @@ with col_run:
 with col_status:
     if data_ready:
         src = "Sample data" if st.session_state.using_sample else "Uploaded files"
-        st.success(f"{src} loaded — ready to run", icon="✓")
+        st.success(f"{src} loaded — ready to run")
     else:
         missing = " and ".join(
             n for n, p in [("GL Balances", st.session_state.gl_path),
@@ -194,16 +199,28 @@ if run_clicked and data_ready:
     }
     ok = True
 
+    progress = st.progress(0, text="Initializing pipeline...")
+
     with st.status("Running pipeline...", expanded=True) as status:
 
-        if _kb_count() == 0:
+        needs_kb = _kb_count() == 0
+        # Assign percentage checkpoints based on whether KB build is required
+        # With KB:    KB=20  Recon=50  Investigation=85  Report=100
+        # Without KB: Recon=40  Investigation=80  Report=100
+        pct_recon = 50 if needs_kb else 40
+        pct_inv   = 85 if needs_kb else 80
+
+        if needs_kb:
+            progress.progress(5, text="Building knowledge base (first-run setup)...")
             status.write("Building knowledge base (first-run setup)...")
             try:
                 _build_kb()
+                progress.progress(20, text="Knowledge base ready")
                 status.write(f"  Knowledge base ready — {_kb_count()} records")
             except Exception as exc:
                 status.write(f"  KB build failed: {type(exc).__name__}: {exc}")
 
+        progress.progress(pct_recon - 10, text="Agent 1 · Reconciliation running...")
         status.write("Agent 1 · Reconciliation — matching GL vs Subledger...")
         try:
             recon = run_matching_engine(
@@ -219,22 +236,25 @@ if run_clicked and data_ready:
                 "exception_count": recon["exception_count"],
                 "threshold_usd"  : recon["threshold_usd"],
             }
+            progress.progress(pct_recon, text=f"Agent 1 complete — {recon['exception_count']} exceptions found")
             status.write(
                 f"  {recon['matched_count']}/{recon['total_accounts']} matched — "
                 f"{recon['exception_count']} exceptions above ${recon['threshold_usd']:,.0f}"
             )
         except Exception as exc:
+            progress.progress(pct_recon, text="Reconciliation failed")
             st.session_state.run_error = f"{type(exc).__name__}: {exc}"
             status.update(label="Reconciliation failed", state="error")
             ok = False
 
         if ok:
-            status.write(f"Agent 2 · Investigation — analysing {len(state['exceptions'])} exceptions...")
+            n_exc = len(state["exceptions"])
+            progress.progress(pct_recon + 5, text=f"Agent 2 · Investigating {n_exc} exceptions...")
+            status.write(f"Agent 2 · Investigation — analysing {n_exc} exceptions...")
             try:
                 state = investigation_agent(state)
-                status.write(
-                    f"  Done — avg confidence {state['confidence']:.0%}"
-                )
+                progress.progress(pct_inv, text=f"Agent 2 complete — avg confidence {state['confidence']:.0%}")
+                status.write(f"  Done — avg confidence {state['confidence']:.0%}")
             except Exception as exc:
                 err = f"{type(exc).__name__}: {exc}"
                 status.write(f"  Investigation unavailable — {err}")
@@ -247,10 +267,13 @@ if run_clicked and data_ready:
                     for ex in state["exceptions"]
                 ]
                 state["confidence"] = 0.5
+                progress.progress(pct_inv, text="Agent 2 unavailable — stubs inserted")
 
         if ok:
+            progress.progress(90, text="Agent 3 · Generating report...")
             status.write("Agent 3 · Reporting...")
             state = human_review_node(state) if state["confidence"] < 0.8 else reporting_agent(state)
+            progress.progress(100, text="Pipeline complete")
             status.update(label="Pipeline complete", state="complete")
 
     if ok:
@@ -330,7 +353,7 @@ if st.session_state.run_complete and st.session_state.results:
                   {sim_th}
                 </tr>
               </thead>
-              <tbody>{"".join(rows_html.split())}</tbody>
+              <tbody>{rows_html}</tbody>
             </table>
             </div>
             """, unsafe_allow_html=True)

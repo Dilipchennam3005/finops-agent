@@ -1,27 +1,34 @@
 """
-Investigation Agent — v0.4
+Investigation Agent — v0.6
 
-For each exception surfaced by the reconciliation agent:
-  1. Embeds the exception description and queries ChromaDB for the 3 most similar
-     historical cases from the knowledge base.
-  2. Sends the exception + retrieved context to Claude (claude-haiku-4-5) with a
-     detailed FinOps domain prompt and structured-output schema.
-  3. Collects root_cause, recommended_action, confidence, and exception_category.
+Parallelized RAG + Claude root-cause analysis.
+All exceptions are investigated concurrently (up to MAX_WORKERS simultaneous
+Claude API calls) rather than sequentially, cutting wall-clock time from
+O(n * api_latency) to roughly O(api_latency) for typical batch sizes.
 
-Sets state["investigations"] and state["confidence"] (average across all exceptions).
+Each exception:
+  1. Queries ChromaDB for the 3 most similar historical cases.
+  2. Calls Claude (claude-haiku-4-5) with structured-output JSON schema.
+  3. Returns root_cause, recommended_action, confidence, exception_category.
+
+Rate-limit errors are retried with exponential backoff (up to 3 attempts).
 """
 
 import json
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import anthropic
 import chromadb
 
-CLAUDE_MODEL = "claude-haiku-4-5"
+CLAUDE_MODEL    = "claude-haiku-4-5"
 COLLECTION_NAME = "finops_exceptions"
+MAX_WORKERS     = 6   # concurrent Claude calls; raise if your tier allows higher throughput
+MAX_RETRIES     = 3
+BASE_BACKOFF    = 2.0 # seconds
 
-# System prompt kept verbose so it exceeds Haiku 4.5's 4096-token caching minimum
 SYSTEM_PROMPT = """You are a senior FinOps reconciliation analyst with deep expertise in general ledger
 accounting, subledger management, financial close processes, and multi-currency operations across
 global enterprises. You specialise in diagnosing financial exceptions: mismatches between the general
@@ -90,21 +97,18 @@ def _get_collection(vector_store_path: str) -> chromadb.Collection:
 
 
 def _retrieve_similar(collection: chromadb.Collection, exception: dict, n: int = 3) -> list[dict]:
-    """Query ChromaDB for the n most similar historical exceptions."""
     query_text = (
         f"{exception['type']} on account {exception['account']} "
         f"currency {exception['currency']} entity {exception.get('entity', 'unknown')} "
         f"variance ${exception['variance']:,.0f} USD"
     )
     results = collection.query(query_texts=[query_text], n_results=n)
-
     similar = []
     for i in range(len(results["ids"][0])):
-        distance = results["distances"][0][i]
-        # Cosine distance in ChromaDB = 1 - cosine_similarity
+        distance   = results["distances"][0][i]
         similarity = round(1.0 - distance, 4)
         similar.append({
-            "id": results["ids"][0][i],
+            "id"      : results["ids"][0][i],
             "document": results["documents"][0][i],
             "metadata": results["metadatas"][0][i],
             "similarity": similarity,
@@ -143,13 +147,7 @@ def _call_claude(anthropic_client: anthropic.Anthropic, user_message: str) -> di
     response = anthropic_client.messages.create(
         model=CLAUDE_MODEL,
         max_tokens=512,
-        system=[
-            {
-                "type": "text",
-                "text": SYSTEM_PROMPT,
-                "cache_control": {"type": "ephemeral"},
-            }
-        ],
+        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": user_message}],
         output_config={
             "format": {
@@ -157,28 +155,16 @@ def _call_claude(anthropic_client: anthropic.Anthropic, user_message: str) -> di
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "root_cause": {"type": "string"},
+                        "root_cause"        : {"type": "string"},
                         "recommended_action": {"type": "string"},
-                        "confidence": {"type": "number"},
+                        "confidence"        : {"type": "number"},
                         "exception_category": {
                             "type": "string",
-                            "enum": [
-                                "FX_TIMING",
-                                "GL_CODING_ERROR",
-                                "INTERCOMPANY",
-                                "PERIOD_CUTOFF",
-                                "SYSTEM_ERROR",
-                                "MANUAL_JOURNAL",
-                                "OTHER",
-                            ],
+                            "enum": ["FX_TIMING","GL_CODING_ERROR","INTERCOMPANY",
+                                     "PERIOD_CUTOFF","SYSTEM_ERROR","MANUAL_JOURNAL","OTHER"],
                         },
                     },
-                    "required": [
-                        "root_cause",
-                        "recommended_action",
-                        "confidence",
-                        "exception_category",
-                    ],
+                    "required": ["root_cause","recommended_action","confidence","exception_category"],
                     "additionalProperties": False,
                 },
             }
@@ -187,53 +173,76 @@ def _call_claude(anthropic_client: anthropic.Anthropic, user_message: str) -> di
     return json.loads(response.content[0].text)
 
 
-def investigation_agent(state: dict) -> dict:
-    """LangGraph node: RAG + Claude root-cause analysis for each exception."""
-    print("Agent 2: Investigation Agent running...")
+def _investigate_one(
+    collection: chromadb.Collection,
+    anthropic_client: anthropic.Anthropic,
+    exception: dict,
+) -> dict:
+    similar      = _retrieve_similar(collection, exception)
+    user_message = _build_user_message(exception, similar)
 
-    base = Path(__file__).parent.parent
+    last_exc = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            result = _call_claude(anthropic_client, user_message)
+            break
+        except anthropic.RateLimitError as exc:
+            last_exc = exc
+            wait = BASE_BACKOFF ** attempt
+            print(f"  Rate limit on {exception['account']} — retry {attempt}/{MAX_RETRIES} in {wait:.0f}s")
+            time.sleep(wait)
+        except Exception as exc:
+            print(
+                f"  ERROR — {exception['account']} ({exception['type']}): "
+                f"{type(exc).__name__}: {exc}"
+            )
+            raise
+    else:
+        raise last_exc
+
+    print(
+        f"  {exception['account']} ({exception['type']}) — "
+        f"category={result['exception_category']} confidence={result['confidence']:.2f}"
+    )
+    return {
+        "account"           : exception["account"],
+        "exception_type"    : exception["type"],
+        "variance"          : exception["variance"],
+        "currency"          : exception["currency"],
+        "root_cause"        : result["root_cause"],
+        "recommended_action": result["recommended_action"],
+        "confidence"        : result["confidence"],
+        "exception_category": result["exception_category"],
+        "similar_cases"     : [c["id"] for c in similar],
+    }
+
+
+def investigation_agent(state: dict) -> dict:
+    """LangGraph node: parallel RAG + Claude root-cause analysis for each exception."""
+    print(f"Agent 2: Investigation Agent running ({len(state['exceptions'])} exceptions, "
+          f"up to {MAX_WORKERS} concurrent)...")
+
+    base              = Path(__file__).parent.parent
     vector_store_path = str(base / "data" / "vector_store")
 
     anthropic_client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-    collection = _get_collection(vector_store_path)
+    collection       = _get_collection(vector_store_path)
 
-    investigations = []
-    confidence_scores = []
+    exceptions = state["exceptions"]
 
-    for exception in state["exceptions"]:
-        similar = _retrieve_similar(collection, exception)
-        user_message = _build_user_message(exception, similar)
-        try:
-            result = _call_claude(anthropic_client, user_message)
-        except Exception as exc:
-            print(
-                f"  ERROR — Claude API call failed for {exception['account']} "
-                f"({exception['type']}): {type(exc).__name__}: {exc}"
-            )
-            raise
+    # Submit all exceptions concurrently; collect in submission order to keep output stable
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        futures = [
+            pool.submit(_investigate_one, collection, anthropic_client, exc)
+            for exc in exceptions
+        ]
+        investigations = [f.result() for f in futures]  # preserves order, propagates exceptions
 
-        investigations.append({
-            "account": exception["account"],
-            "exception_type": exception["type"],
-            "variance": exception["variance"],
-            "currency": exception["currency"],
-            "root_cause": result["root_cause"],
-            "recommended_action": result["recommended_action"],
-            "confidence": result["confidence"],
-            "exception_category": result["exception_category"],
-            "similar_cases": [c["id"] for c in similar],
-        })
-        confidence_scores.append(result["confidence"])
-        print(
-            f"  {exception['account']} ({exception['type']}) — "
-            f"category={result['exception_category']} confidence={result['confidence']:.2f}"
-        )
-
+    confidence_scores      = [inv["confidence"] for inv in investigations]
     state["investigations"] = investigations
-    state["confidence"] = (
+    state["confidence"]     = (
         round(sum(confidence_scores) / len(confidence_scores), 4)
-        if confidence_scores
-        else 0.0
+        if confidence_scores else 0.0
     )
     print(f"  Average confidence: {state['confidence']:.2f}")
     return state

@@ -98,6 +98,7 @@ Streamlit Dashboard (results + insights)
 - Reporting agent updated to include category, root cause, recommended action, similar case IDs
 
 ### v0.5 — Streamlit Dashboard ✅
+
 - `streamlit_app/app.py` — full interactive frontend (`streamlit run streamlit_app/app.py`)
 - **Step 1 — Load Data**: dual CSV upload (GL Balances + Subledger) or one-click **Use Sample Data** button (loads `data/raw/` automatically for zero-setup demos)
 - **Step 2 — Run Pipeline**: primary **Run Reconciliation** button drives the full LangGraph pipeline with a live `st.status` progress indicator showing per-agent updates as each node completes
@@ -110,20 +111,43 @@ Streamlit Dashboard (results + insights)
 - Dark sidebar with project name, version, configurable variance threshold, and pipeline overview
 - Investigation agent failures (API outage / low credits) handled gracefully — reconciliation results still rendered with stub entries
 
-### v0.6 — dbt + DuckDB Integration ⏳
-- Raw data modelled through dbt staging and mart layers
-- DuckDB as local warehouse
-- Incremental loading logic
+### v0.6 — Parallel Investigation Engine ✅
+- `agents/investigation_agent.py` rewritten with `ThreadPoolExecutor` (up to 6 concurrent Claude calls)
+- Reduces Agent 2 wall-clock time from O(n × API latency) → O(API latency) — ~6× faster on typical batch sizes
+- Exponential backoff retry (up to 3 attempts) on rate-limit errors
+- Header centred, version label tightened, progress bar text updated to v0.6
 
-### v0.7 — Human Review Node ⏳
-- Low confidence exceptions routed for manual approval
-- Audit trail logging
+### v0.7 — SQL & Database Connectors ⏳
+- Direct SQL query interface: upload `.sql` files or paste queries against local DuckDB / SQLite
+- Connector templates for PostgreSQL, MySQL, Snowflake, BigQuery
+- Schema auto-detection — maps incoming columns to GL / subledger roles automatically
+- Replaces CSV-only upload with a unified **Data Source** panel
+
+### v0.8 — Extended Organisational Data Sources ⏳
+The reconciliation scope expands beyond GL ↔ Subledger to cover the full finance data stack:
+
+| Source | Use case |
+|--------|----------|
+| Accounts Payable ledger | AP ageing, duplicate-payment detection |
+| Accounts Receivable ledger | DSO analysis, unapplied cash matching |
+| Bank statements (OFX / CSV) | Bank-to-book reconciliation |
+| Payroll exports | Payroll accrual vs GL matching |
+| Expense reports (Concur / SAP) | T&E posting validation |
+| Intercompany schedules | IC elimination completeness check |
+| Budget vs Actuals | Variance analysis, over/under spend flagging |
+| FX rate feeds | Live ECB / Bloomberg rate ingestion for revaluation |
+
+### v0.9 — dbt + DuckDB Warehouse Layer ⏳
+- Raw data modelled through dbt staging and mart layers
+- DuckDB as local analytical warehouse
+- Incremental loading — only reprocess changed records
+- Pre-built dbt models: `stg_gl`, `stg_subledger`, `mart_exceptions`, `mart_reconciliation`
 
 ### v1.0 — Production Ready ⏳
-- Clean packaging
-- Full documentation
-- pip installable
-- Sample data included
+- Real-time monitoring: scheduled reconciliation runs with email / Slack alerts on new exceptions
+- Audit trail: every AI decision logged with timestamp, model version, confidence, and reviewer
+- Role-based access: preparer / reviewer / approver workflow
+- Clean packaging, full documentation, pip installable
 
 ---
 
