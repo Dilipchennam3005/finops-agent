@@ -209,7 +209,7 @@ if st.button("Run Reconciliation", type="primary", disabled=not data_ready):
         try:
             recon = run_matching_engine(
                 gl_path=st.session_state.gl_path,
-                sl_path=st.session_state.sl_path,
+                subledger_path=st.session_state.sl_path,
                 output_dir=output_dir,
                 threshold=float(threshold),
             )
