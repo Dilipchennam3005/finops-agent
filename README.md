@@ -97,19 +97,27 @@ Streamlit Dashboard (results + insights)
 - System prompt cached via `cache_control: ephemeral` to minimise API cost across all 10 per-run calls
 - Reporting agent updated to include category, root cause, recommended action, similar case IDs
 
-### v0.5 — dbt + DuckDB Integration ⏳
+### v0.5 — Streamlit Dashboard ✅
+- `streamlit_app/app.py` — full interactive frontend (`streamlit run streamlit_app/app.py`)
+- **Step 1 — Load Data**: dual CSV upload (GL Balances + Subledger) or one-click **Use Sample Data** button (loads `data/raw/` automatically for zero-setup demos)
+- **Step 2 — Run Pipeline**: primary **Run Reconciliation** button drives the full LangGraph pipeline with a live `st.status` progress indicator showing per-agent updates as each node completes
+- **Step 3 — Results**:
+  - Summary cards: Total Accounts · Clean Reconciliations · Exceptions Found · Avg Confidence
+  - Exceptions table: account, type, currency, variance, AI category, root cause, recommended action, confidence — colour-coded green (≥ 80%) / yellow (65–79%) / red (< 65%)
+  - Plotly bar chart: exception breakdown by type (GL_MISMATCH, FX_DISCREPANCY, GL_ONLY, SUBLEDGER_ONLY)
+  - Human Review Queue: exceptions below 80% confidence shown in expandable `[NEEDS REVIEW]` cards with root cause and recommended action
+- Download button exports full exception report as CSV
+- Dark sidebar with project name, version, configurable variance threshold, and pipeline overview
+- Investigation agent failures (API outage / low credits) handled gracefully — reconciliation results still rendered with stub entries
+
+### v0.6 — dbt + DuckDB Integration ⏳
 - Raw data modelled through dbt staging and mart layers
 - DuckDB as local warehouse
 - Incremental loading logic
 
-### v0.6 — Human Review Node ⏳
+### v0.7 — Human Review Node ⏳
 - Low confidence exceptions routed for manual approval
 - Audit trail logging
-
-### v0.7 — Streamlit Dashboard ⏳
-- Upload CSVs, run reconciliation, see results
-- Exception investigation view
-- Plotly charts for variance analysis
 
 ### v1.0 — Production Ready ⏳
 - Clean packaging
@@ -136,7 +144,10 @@ pip install -r requirements.txt
 # Add your API key
 # Edit .env and add: ANTHROPIC_API_KEY=your_key_here
 
-# Run the app (available from v0.7)
+# Build the ChromaDB knowledge base (run once)
+python data/build_knowledge_base.py
+
+# Launch the Streamlit dashboard
 streamlit run streamlit_app/app.py
 ```
 
