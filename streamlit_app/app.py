@@ -2,6 +2,7 @@
 FinOps Agent — Streamlit Frontend (v0.5)
 Run: streamlit run streamlit_app/app.py
 """
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -104,6 +105,31 @@ def _reset_run():
     st.session_state.results = None
 
 
+# ── Knowledge base helper ─────────────────────────────────────────────────────
+VECTOR_STORE_PATH = str(ROOT / "data" / "vector_store")
+KB_COLLECTION = "finops_exceptions"
+
+
+def _kb_count() -> int:
+    """Return number of documents in the ChromaDB collection, or 0 if missing."""
+    try:
+        import chromadb
+        client = chromadb.PersistentClient(path=VECTOR_STORE_PATH)
+        return client.get_collection(KB_COLLECTION).count()
+    except Exception:
+        return 0
+
+
+def _build_kb() -> None:
+    """Dynamically import and run data/build_knowledge_base.py's build()."""
+    spec = importlib.util.spec_from_file_location(
+        "build_knowledge_base", ROOT / "data" / "build_knowledge_base.py"
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    mod.build(VECTOR_STORE_PATH)
+
+
 # ── Header ────────────────────────────────────────────────────────────────────
 st.title("FinOps Agent")
 st.markdown(
@@ -170,7 +196,10 @@ if st.session_state.gl_path and st.session_state.sl_path:
 else:
     missing = [
         name
-        for name, path in [("GL Balances", st.session_state.gl_path), ("Subledger", st.session_state.sl_path)]
+        for name, path in [
+            ("GL Balances", st.session_state.gl_path),
+            ("Subledger", st.session_state.sl_path),
+        ]
         if not path
     ]
     st.info(f"Upload {' and '.join(missing)}, or click **Use Sample Data**.")
@@ -204,6 +233,15 @@ if st.button("Run Reconciliation", type="primary", disabled=not data_ready):
 
     with st.status("Running FinOps pipeline...", expanded=True) as status:
 
+        # ── Knowledge base check ──────────────────────────────────────────
+        if _kb_count() == 0:
+            status.write("**Building knowledge base** — first-run setup (32 historical records)...")
+            try:
+                _build_kb()
+                status.write(f"  Knowledge base ready ({_kb_count()} records)")
+            except Exception as exc:
+                status.write(f"  Knowledge base build failed: {type(exc).__name__}: {exc}")
+
         # ── Agent 1: Reconciliation ───────────────────────────────────────
         status.write("**Agent 1 · Reconciliation** — matching GL vs Subledger...")
         try:
@@ -224,10 +262,10 @@ if st.button("Run Reconciliation", type="primary", disabled=not data_ready):
             }
             status.write(
                 f"  Matched **{recon['matched_count']}/{recon['total_accounts']}** accounts — "
-                f"**{recon['exception_count']}** exceptions above ${recon['threshold_usd']:,.0f} threshold"
+                f"**{recon['exception_count']}** exceptions above ${recon['threshold_usd']:,.0f}"
             )
         except Exception as exc:
-            st.session_state.run_error = f"Reconciliation failed: {exc}"
+            st.session_state.run_error = f"Reconciliation failed: {type(exc).__name__}: {exc}"
             status.update(label="Pipeline failed at reconciliation", state="error")
             pipeline_ok = False
 
@@ -244,14 +282,15 @@ if st.button("Run Reconciliation", type="primary", disabled=not data_ready):
                     f"avg confidence **{state['confidence']:.0%}**"
                 )
             except Exception as exc:
-                status.write(f"  Investigation unavailable: {exc}")
+                error_detail = f"{type(exc).__name__}: {exc}"
+                status.write(f"  Investigation unavailable — {error_detail}")
                 state["investigations"] = [
                     {
                         "account": ex["account"],
                         "exception_type": ex["type"],
                         "variance": ex["variance"],
                         "currency": ex["currency"],
-                        "root_cause": "Investigation unavailable (API error — see logs)",
+                        "root_cause": f"Investigation unavailable: {error_detail}",
                         "recommended_action": "Manual review required",
                         "confidence": 0.5,
                         "exception_category": "OTHER",
@@ -297,7 +336,7 @@ if st.session_state.run_complete and st.session_state.results:
     c3.metric(
         "Exceptions Found",
         raw.get("exception_count", 0),
-        delta=f"${raw.get('threshold_usd', 0):,.0f} threshold",
+        delta=f">${raw.get('threshold_usd', 0):,.0f} threshold",
         delta_color="off",
     )
     c4.metric(
@@ -314,33 +353,61 @@ if st.session_state.run_complete and st.session_state.results:
 
     if invs:
         df = pd.DataFrame(invs)
-        display_cols = {
-            "account": "Account",
-            "exception_type": "Type",
-            "currency": "Currency",
-            "variance": "Variance (USD)",
-            "exception_category": "Category",
-            "root_cause": "Root Cause",
-            "recommended_action": "Recommended Action",
-            "confidence": "Confidence",
+
+        # Determine whether any similar_cases are populated
+        has_similar = any(
+            isinstance(inv.get("similar_cases"), list) and len(inv["similar_cases"]) > 0
+            for inv in invs
+        )
+
+        df_disp = pd.DataFrame({
+            "Account": df["account"],
+            "Exception Type": df["exception_type"],
+            "Currency": df["currency"],
+            "Variance (USD)": df["variance"].astype(float),
+            "Category": df["exception_category"],
+            "Root Cause": df["root_cause"],
+            "Recommended Action": df["recommended_action"],
+            # ProgressColumn expects 0–100
+            "Confidence": df["confidence"].astype(float) * 100,
+        })
+
+        if has_similar:
+            df_disp["Similar Cases"] = df["similar_cases"].apply(
+                lambda x: ", ".join(x) if isinstance(x, list) else ""
+            )
+
+        col_cfg = {
+            "Account": st.column_config.TextColumn("Account", width="small"),
+            "Exception Type": st.column_config.TextColumn("Exception Type", width="small"),
+            "Currency": st.column_config.TextColumn("Currency", width="small"),
+            "Variance (USD)": st.column_config.NumberColumn(
+                "Variance (USD)",
+                format="$ %.0f",
+                width="small",
+            ),
+            "Category": st.column_config.TextColumn("AI Category", width="small"),
+            "Root Cause": st.column_config.TextColumn("Root Cause", width="large"),
+            "Recommended Action": st.column_config.TextColumn("Recommended Action", width="large"),
+            "Confidence": st.column_config.ProgressColumn(
+                "Confidence",
+                min_value=0,
+                max_value=100,
+                format="%.0f%%",
+                width="small",
+            ),
         }
-        df_disp = df[[c for c in display_cols if c in df.columns]].rename(columns=display_cols)
-        df_disp["Variance (USD)"] = df_disp["Variance (USD)"].apply(lambda x: f"${float(x):,.0f}")
-        df_disp["Confidence"] = df_disp["Confidence"].apply(lambda x: f"{float(x):.0%}")
+        if has_similar:
+            col_cfg["Similar Cases"] = st.column_config.TextColumn(
+                "Similar Cases", width="medium"
+            )
 
-        def _conf_style(val: str) -> str:
-            try:
-                v = float(val.strip("%")) / 100
-                if v >= 0.8:
-                    return "background-color: #d4edda; color: #155724"
-                if v >= 0.65:
-                    return "background-color: #fff3cd; color: #856404"
-                return "background-color: #f8d7da; color: #721c24"
-            except Exception:
-                return ""
-
-        styled = df_disp.style.map(_conf_style, subset=["Confidence"])
-        st.dataframe(styled, use_container_width=True, hide_index=True)
+        st.dataframe(
+            df_disp,
+            column_config=col_cfg,
+            use_container_width=True,
+            hide_index=True,
+        )
 
     # ── Bar chart ──────────────────────────────────────────────────────────
     st.subheader("Exception Breakdown by Type")
@@ -385,8 +452,7 @@ if st.session_state.run_complete and st.session_state.results:
     st.subheader("Human Review Queue")
     if review_items:
         st.warning(
-            f"{len(review_items)} exception(s) flagged for human review "
-            f"(confidence < 80%)"
+            f"{len(review_items)} exception(s) flagged for human review (confidence < 80%)"
         )
         for inv in review_items:
             conf = inv.get("confidence", 0)
@@ -402,11 +468,12 @@ if st.session_state.run_complete and st.session_state.results:
                 col_b.markdown(f"**Recommended action**  \n{inv['recommended_action']}")
                 st.markdown(f"**Category:** `{inv['exception_category']}`")
                 if inv.get("similar_cases"):
-                    st.markdown(f"**Similar historical cases:** {', '.join(inv['similar_cases'])}")
+                    st.markdown(
+                        f"**Similar historical cases:** {', '.join(inv['similar_cases'])}"
+                    )
     else:
         st.success(
-            "All exceptions meet the 80% confidence threshold. "
-            "No manual review required."
+            "All exceptions meet the 80% confidence threshold. No manual review required."
         )
 
     st.divider()

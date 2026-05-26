@@ -203,7 +203,14 @@ def investigation_agent(state: dict) -> dict:
     for exception in state["exceptions"]:
         similar = _retrieve_similar(collection, exception)
         user_message = _build_user_message(exception, similar)
-        result = _call_claude(anthropic_client, user_message)
+        try:
+            result = _call_claude(anthropic_client, user_message)
+        except Exception as exc:
+            print(
+                f"  ERROR — Claude API call failed for {exception['account']} "
+                f"({exception['type']}): {type(exc).__name__}: {exc}"
+            )
+            raise
 
         investigations.append({
             "account": exception["account"],
