@@ -71,16 +71,22 @@ Streamlit Dashboard (results + insights)
 - Installed all dependencies
 - README established
 
-### v0.2 — Agent Skeleton & LangGraph Orchestration 🚧
+### v0.2 — Agent Skeleton & LangGraph Orchestration ✅
 - Three agents communicating via LangGraph
 - State passing between agents
 - Sample data ingestion
 
-### v0.3 — Reconciliation Logic ⏳
-- GL vs subledger matching engine
-- Configurable variance thresholds
-- FX conversion layer
-- Exception flagging and routing
+### v0.3 — Reconciliation Engine ✅
+- Real matching engine in `agents/reconciliation_agent.py` — replaces placeholder
+- Reads `data/raw/gl_balances.csv` and `data/raw/subledger.csv`
+- Matches records on `(account_code, currency, period, entity)`
+- Applies FX conversion (GBP → USD at 1.27, EUR → USD at 1.08) before comparing
+- Flags `GL_MISMATCH`, `FX_DISCREPANCY`, `GL_ONLY`, and `SUBLEDGER_ONLY` exceptions
+- Configurable variance threshold (default $10,000 USD)
+- Writes `data/processed/reconciled_clean.csv` and `data/processed/exceptions.csv`
+- Orchestrator now passes real exception data to the investigation agent
+- Synthetic test data: 55 accounts (30 USD / 15 GBP / 10 EUR), 10 intentional mismatches built in
+- Generator script: `python data/generate_sample_data.py`
 
 ### v0.4 — RAG Layer ⏳
 - ChromaDB vector store setup

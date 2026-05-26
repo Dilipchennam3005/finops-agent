@@ -1,43 +1,19 @@
-from typing import TypedDict, Annotated
+from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from dotenv import load_dotenv
-import os
+
+from .reconciliation_agent import reconciliation_agent
 
 load_dotenv()
 
 # This is the shared state that all three agents read from and write to
 class FinOpsState(TypedDict):
-    raw_data: dict          # input data from CSV/Excel
+    raw_data: dict          # summary stats populated by reconciliation agent
     exceptions: list        # exceptions found by reconciliation agent
     investigations: list    # investigation results from RAG agent
     report: str             # final report from reporting agent
     confidence: float       # confidence score — low score routes to human review
     human_review: bool      # flag for human review needed
-
-# Agent 1 — Reconciliation Agent
-def reconciliation_agent(state: FinOpsState) -> FinOpsState:
-    print("Agent 1: Reconciliation Agent running...")
-    # Placeholder logic for now — we will replace this in v0.3
-    state["exceptions"] = [
-        {
-            "account": "4210-APAC",
-            "variance": 23400,
-            "currency": "USD",
-            "source_a": 150000,
-            "source_b": 126600,
-            "type": "GL_MISMATCH"
-        },
-        {
-            "account": "3301-EMEA",
-            "variance": 5200,
-            "currency": "USD",
-            "source_a": 98000,
-            "source_b": 92800,
-            "type": "FX_DISCREPANCY"
-        }
-    ]
-    print(f"  Found {len(state['exceptions'])} exceptions")
-    return state
 
 # Agent 2 — Investigation Agent
 def investigation_agent(state: FinOpsState) -> FinOpsState:
