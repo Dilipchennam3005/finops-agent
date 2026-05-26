@@ -3,6 +3,7 @@ from langgraph.graph import StateGraph, END
 from dotenv import load_dotenv
 
 from .reconciliation_agent import reconciliation_agent
+from .investigation_agent import investigation_agent
 
 load_dotenv()
 
@@ -15,43 +16,50 @@ class FinOpsState(TypedDict):
     confidence: float       # confidence score — low score routes to human review
     human_review: bool      # flag for human review needed
 
-# Agent 2 — Investigation Agent
-def investigation_agent(state: FinOpsState) -> FinOpsState:
-    print("Agent 2: Investigation Agent running...")
-    # Placeholder logic for now — RAG layer comes in v0.4
-    investigations = []
-    for exception in state["exceptions"]:
-        investigations.append({
-            "account": exception["account"],
-            "likely_cause": f"Variance of ${exception['variance']:,} flagged for {exception['type']}. Full AI investigation coming in v0.4.",
-            "confidence": 0.75
-        })
-    state["investigations"] = investigations
-    state["confidence"] = 0.75
-    print(f"  Investigated {len(investigations)} exceptions")
-    return state
-
 # Agent 3 — Reporting Agent
 def reporting_agent(state: FinOpsState) -> FinOpsState:
     print("Agent 3: Reporting Agent running...")
     lines = ["=== FINOPS EXCEPTION REPORT ===\n"]
     for inv in state["investigations"]:
-        lines.append(f"Account: {inv['account']}")
-        lines.append(f"Finding: {inv['likely_cause']}")
-        lines.append(f"Confidence: {inv['confidence']}\n")
+        lines.append(f"Account         : {inv['account']}")
+        lines.append(f"Exception type  : {inv['exception_type']}")
+        lines.append(f"Variance (USD)  : ${inv['variance']:,.2f}")
+        lines.append(f"Category        : {inv['exception_category']}")
+        lines.append(f"Root cause      : {inv['root_cause']}")
+        lines.append(f"Recommended action: {inv['recommended_action']}")
+        lines.append(f"Confidence      : {inv['confidence']:.0%}")
+        lines.append(f"Similar cases   : {', '.join(inv['similar_cases'])}")
+        lines.append("")
     state["report"] = "\n".join(lines)
     print("  Report generated")
     return state
 
 # Human Review Node
 def human_review_node(state: FinOpsState) -> FinOpsState:
-    print("⚠️  Low confidence detected — routing to human review")
+    print("WARNING: Low confidence detected - routing to human review")
     state["human_review"] = True
+    lines = [
+        "=== FINOPS EXCEPTION REPORT — HUMAN REVIEW REQUIRED ===\n",
+        f"Average confidence {state['confidence']:.0%} is below the 80% threshold.\n",
+        "The following exceptions require manual review before sign-off:\n",
+    ]
+    for inv in state["investigations"]:
+        flag = " [REVIEW]" if inv["confidence"] < 0.8 else ""
+        lines.append(f"Account         : {inv['account']}{flag}")
+        lines.append(f"Exception type  : {inv['exception_type']}")
+        lines.append(f"Variance (USD)  : ${inv['variance']:,.2f}")
+        lines.append(f"Category        : {inv['exception_category']}")
+        lines.append(f"Root cause      : {inv['root_cause']}")
+        lines.append(f"Recommended action: {inv['recommended_action']}")
+        lines.append(f"Confidence      : {inv['confidence']:.0%}")
+        lines.append(f"Similar cases   : {', '.join(inv['similar_cases'])}")
+        lines.append("")
+    state["report"] = "\n".join(lines)
     return state
 
 # Router — decides whether to go to reporting or human review
 def route_after_investigation(state: FinOpsState) -> str:
-    if state["confidence"] < 0.7:
+    if state["confidence"] < 0.8:
         return "human_review"
     return "reporting_agent"
 
@@ -94,7 +102,7 @@ if __name__ == "__main__":
         "human_review": False
     }
 
-    print("\n🚀 Running FinOps Agent...\n")
+    print("\nRunning FinOps Agent...\n")
     result = graph.invoke(initial_state)
-    print("\n📋 FINAL REPORT:")
+    print("\nFINAL REPORT:")
     print(result["report"])

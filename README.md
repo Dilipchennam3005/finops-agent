@@ -88,10 +88,14 @@ Streamlit Dashboard (results + insights)
 - Synthetic test data: 55 accounts (30 USD / 15 GBP / 10 EUR), 10 intentional mismatches built in
 - Generator script: `python data/generate_sample_data.py`
 
-### v0.4 — RAG Layer ⏳
-- ChromaDB vector store setup
-- Synthetic historical exception knowledge base
-- Investigation Agent retrieval logic
+### v0.4 — RAG Investigation Layer ✅
+- `data/build_knowledge_base.py` — 32 synthetic historical exception records across 6 categories (FX_TIMING, GL_CODING_ERROR, INTERCOMPANY, PERIOD_CUTOFF, SYSTEM_ERROR, MANUAL_JOURNAL)
+- ChromaDB PersistentClient in `data/vector_store/` with cosine-distance HNSW index (all-MiniLM-L6-v2 embeddings via ONNX)
+- `agents/investigation_agent.py` — for each exception: queries ChromaDB top-3 similar historical cases, calls Claude API (`claude-haiku-4-5`) with structured-output JSON schema
+- Claude returns: `root_cause`, `recommended_action`, `confidence` (0–1), `exception_category`
+- Confidence routing: average ≥ 0.80 → reporting agent; < 0.80 → human review node (generates flagged report)
+- System prompt cached via `cache_control: ephemeral` to minimise API cost across all 10 per-run calls
+- Reporting agent updated to include category, root cause, recommended action, similar case IDs
 
 ### v0.5 — dbt + DuckDB Integration ⏳
 - Raw data modelled through dbt staging and mart layers
